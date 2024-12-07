@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deforestation detecction </title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      width: 800px;
+      height: 500px;
+    }
+
+    .submit-button {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+      display: none;
+      z-index: 1000;
+    }
+
+    .or-text {
+      margin: 20px 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    form {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    form label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    form input,
+    form button {
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
+</head>
+
+<body>
+  <div id="map"></div>
+  <button class="submit-button" id="submitButton">Submit Coordinates</button>
+
+  <div class="or-text">OR</div>
+
+  <form action="/post-image" method="POST" enctype="multipart/form-data">
+    <label for="imageupload">Choose a png or jpg file:</label>
+    <input type="file" id="uploadimage" name="image" accept="image/png, image/jpeg" required>
+    <br>
+    <button type="submit">Submit</button>
+  </form>
+
+  <script>
+
+    var center = [27.65047, 84.549376];
+
+    var map = L.map('map').setView(center, 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    var editableLayers = new L.FeatureGroup();
+    map.addLayer(editableLayers);
+
+    var drawPluginOptions = {
+      position: 'topleft',
+      draw: {
+        polyline: false,
+        polygon: false,
+        circle: false,
+        marker: false,
+        circlemarker: false,
+        rectangle: {
+          shapeOptions: {
+            clickable: true
+          }
+        }
+      },
+      edit: {
+        featureGroup: editableLayers,
+        remove: true
+      }
+    };
+
+    var drawControl = new L.Control.Draw(drawPluginOptions);
+    map.addControl(drawControl);
+
+    map.on('draw:created', function (e) {
+      var layer = e.layer;
+
+      if (e.layerType === 'rectangle') {
+
+        var x = layer.getLatLngs()[0]
+
+        window.tmp = x;
+
+        document.getElementById('submitButton').style.display = 'block';
+
+      }
+
+      editableLayers.addLayer(layer);
+    });
+
+    map.on('draw:deleted', function (e) {
+      document.getElementById('submitButton').style.display = 'none';
+    });
+
+    document.getElementById('submitButton').onclick = function () {
+      fetch(`${window.location.origin}/post-map`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(window.tmp)
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Network error" + response.statusText);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const img = document.createElement('img')
+
+          L.imageOverlay(url, window.tmp).addTo(map);
+
+          img.src = url;
+          img.alt = "sat";
+
+          document.body.append(img)
+          alert("Success")
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
+    };
+
+    document.querySelector('form').onsubmit = async function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      try {
+        const response = await fetch('/post-image', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to process the image");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = "result";
+        document.body.appendChild(img);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+  </script>
+</body>
+
+</html>

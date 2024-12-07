@@ -1,0 +1,6 @@
+.env
+model/
+tmp/
+images/
+__pycache__/
+**/__pycache__/
