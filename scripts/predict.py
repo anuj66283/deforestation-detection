@@ -53,7 +53,7 @@ def mix_all(img_pth, msk):
 
     a = np.zeros_like(img, dtype=np.uint8)
 
-    a[:,:,3] = 60
+    a[:,:,3] = 170
     a[msk==1, 0] = 255
 
     return Image.alpha_composite(img, Image.fromarray(a)).convert('RGB')

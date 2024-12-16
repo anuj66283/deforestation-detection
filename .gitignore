@@ -3,3 +3,4 @@ model/
 tmp/
 __pycache__/
 **/__pycache__/
+deep_new.pth
